@@ -174,8 +174,6 @@ export class WordpressAppStack extends Stack {
       serviceName: 'wordpress-app'
     });
 
-    // wordpressService.loadBalancer.addSecurityGroup(lbSG);
-
     // Health check for targets
     wordpressService.targetGroup.configureHealthCheck({
       path: '/',
