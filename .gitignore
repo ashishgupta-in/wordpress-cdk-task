@@ -12,3 +12,6 @@ cdk.out
 
 # Development
 dev/*
+
+package-lock.json
+cdk.context.json
