@@ -4,5 +4,4 @@
 set -a && source .env && set +a
 
 # Deploy
-# npx cdk deploy --require-approval never
-npx cdk deploy --require-approval never >> deploy-logs.txt
+npx cdk deploy --require-approval never
