@@ -1,0 +1,29 @@
+# Deployment
+CDK_DEPLOY_ACCOUNT=''
+CDK_DEPLOY_REGION=''
+
+# Network
+VPC_CIDR=''
+MAX_AZ=''  # Min requirement: 2
+NAT_GW=''
+
+PUB_SUB_MASK=''
+PRIV_SUB_MASK=''
+ISO_SUB_MASK=''
+
+# Database
+DB_NAME=''
+DB_USER=''
+DB_PASSWORD=''
+STORAGE=''
+
+# Target Scaling
+MIN_CAP=''
+MAX_CAP=''
+
+CPU_CONS=''
+MEM_CONS=''
+
+# Route53
+ZONE_NAME=''
+TTL=''
