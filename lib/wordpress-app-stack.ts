@@ -25,26 +25,26 @@ export class WordpressAppStack extends Stack {
     // VPC, Subnets, NAT, IGW
     const vpc = new ec2.Vpc(this, 'vpc', {
       vpcName: 'wordpress-vpc',
-      cidr: '10.0.0.0/16',
-      maxAzs: 2,
-      natGateways: 1,
+      cidr: process.env.VPC_CIDR,
+      maxAzs: parseInt(process.env.MAX_AZ || '2'),
+      natGateways: parseInt(process.env.NAT_GW || '1'),
       natGatewaySubnets: {
         subnetGroupName: 'ingress'
       },
       subnetConfiguration: [
         {
-          cidrMask: 24,
+          cidrMask: parseInt(process.env.PUB_SUB_MASK || '24'),
           name: 'ingress',
           mapPublicIpOnLaunch: true,
           subnetType: ec2.SubnetType.PUBLIC,
         },
         {
-          cidrMask: 24,
+          cidrMask: parseInt(process.env.PRIV_SUB_MASK || '24'),
           name: 'application',
           subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS,
         },
         {
-          cidrMask: 28,
+          cidrMask: parseInt(process.env.ISO_SUB_MASK || '28'),
           name: 'database',
           subnetType: ec2.SubnetType.PRIVATE_ISOLATED,
         }
@@ -99,9 +99,9 @@ export class WordpressAppStack extends Stack {
     // Database Instance
     const db = new rds.DatabaseInstance(this, 'rds', {
       instanceIdentifier: 'wordpress-db',
-      databaseName: 'wordpress',
+      databaseName: process.env.DB_NAME || 'wordpress',
       instanceType: ec2.InstanceType.of(ec2.InstanceClass.T4G, ec2.InstanceSize.MICRO),
-      allocatedStorage: 10,
+      allocatedStorage: parseInt(process.env.STORAGE || '10'),
       multiAz: true,
       port: 3306,
       subnetGroup: dbSubnetGroup,
@@ -113,8 +113,8 @@ export class WordpressAppStack extends Stack {
         version: rds.MysqlEngineVersion.VER_8_0_30
       }),
       credentials: {
-        username: 'wordpress',
-        password: SecretValue.unsafePlainText('wordpress')
+        username: process.env.DB_USER || 'wordpress',
+        password: SecretValue.unsafePlainText(process.env.DB_PASSWORD || 'wordpress')
       },
       securityGroups: [dbSG],
       removalPolicy: RemovalPolicy.DESTROY,
@@ -127,8 +127,8 @@ export class WordpressAppStack extends Stack {
       autoScalingGroupName: 'Wordpress App ASG',
       instanceType: ec2.InstanceType.of(ec2.InstanceClass.T2, ec2.InstanceSize.MICRO),
       machineImage: ecs.EcsOptimizedImage.amazonLinux2(),
-      desiredCapacity: 1,
-      maxCapacity: 2,
+      desiredCapacity: parseInt(process.env.MIN_CAP || '1'),
+      maxCapacity: parseInt(process.env.MAX_CAP || '2'),
       updatePolicy: autoscaling.UpdatePolicy.rollingUpdate(),
       vpcSubnets: {
         subnets: vpc.privateSubnets
@@ -164,13 +164,13 @@ export class WordpressAppStack extends Stack {
         image: ecs.ContainerImage.fromRegistry('wordpress'),
         environment: {
           WORDPRESS_DB_HOST: db.instanceEndpoint.hostname,
-          WORDPRESS_DB_USER: 'wordpress',
-          WORDPRESS_DB_PASSWORD: 'wordpress',
-          WORDPRESS_DB_NAME: 'wordpress',
+          WORDPRESS_DB_USER: process.env.DB_USER || 'wordpress',
+          WORDPRESS_DB_PASSWORD: process.env.DB_PASSWORD || 'wordpress',
+          WORDPRESS_DB_NAME: process.env.DB_NAME || 'wordpress',
         },
         containerPort: 80
       },
-      desiredCount: 1,
+      desiredCount: parseInt(process.env.MIN_CAP || '1'),
       serviceName: 'wordpress-app'
     });
 
@@ -182,23 +182,23 @@ export class WordpressAppStack extends Stack {
 
     // Scalable Target
     const scalableTarget = wordpressService.service.autoScaleTaskCount({
-      minCapacity: 1,
-      maxCapacity: 2
+      minCapacity: parseInt(process.env.MIN_CAP || '1'),
+      maxCapacity: parseInt(process.env.MAX_CAP || '2'),
     });
 
     // Task scaling based on cpu 
     scalableTarget.scaleOnCpuUtilization('task-cpu-scaling', {
-      targetUtilizationPercent: 50
+      targetUtilizationPercent: parseInt(process.env.CPU_CONS || '50')
     });
 
     // Task scaling based on memory
     scalableTarget.scaleOnMemoryUtilization('task-memory-scaling', {
-      targetUtilizationPercent: 50
+      targetUtilizationPercent: parseInt(process.env.MEM_CONS || '50')
     });
 
     // Hosted Zone
     const hostedZone = new aws_route53.HostedZone(this, 'wordpress-hz', {
-      zoneName: 'wordpress101.com'
+      zoneName: process.env.ZONE_NAME || 'wordpress101.com'
     })
 
     // Route traffic `app.wordpress101.com` to the Load Balancer
@@ -206,7 +206,7 @@ export class WordpressAppStack extends Stack {
       recordName: 'app',
       zone: hostedZone,
       target: aws_route53.RecordTarget.fromAlias(new aws_route53_targets.LoadBalancerTarget(wordpressService.loadBalancer)),
-      ttl: Duration.minutes(30)
+      ttl: Duration.minutes(parseInt(process.env.TTL || '30'))
     });
 
     // Tag Resources
